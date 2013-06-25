@@ -13,9 +13,9 @@
 - Autoconf
     - Autoconf主要用来生成configure脚本的。
 
-    > 附：configure脚本主要功能是以Makfile.in和config.h.in模板为输入
-    > 
-    >    基于系统特征和用户指定配置生成Makefile和config.h的。
+        > 附：configure脚本主要功能是以Makfile.in和config.h.in模板为输入
+        > 
+        >    基于系统特征和用户指定配置生成Makefile和config.h的。
 
     - autoconf的输入：configure.ac和acinclude.m4/aclocal.m4    
       autoconf的输出：configure脚本
@@ -41,27 +41,27 @@
             - 如果Makfile.in或Makefile.am中有用到脚本等，会自动添加AC_CHECK_INSTALL等
         - configure.scan的结构
         >   **init**   
-        >   > AC_PREREQ([2.63])
-        >   >
-        >   > AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
+        >   AC_PREREQ([2.63])
+        >   
+        >   AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
         >   
         >   **init file**  
-        >   > AC_CONFIG_SRCDIR([test.c])
-        >   >
-        >   >AC_CONFIG_XXXs
+        >   AC_CONFIG_SRCDIR([test.c])
+        >   
+        >   AC_CONFIG_XXXs
         > 
         >   **check request**
-        >   > **Checks for programs.**
-        >   >
-        >   > **Checks for libraries.**
-        >   >
-        >   > **Checks for typedefs, structures, and compiler characteristics.**
-        >   >
-        >   > **Checks for library functions.**
+        >   **Checks for programs.**
+        >   
+        >   **Checks for libraries.**
+        >   
+        >   **Checks for typedefs, structures, and compiler characteristics.**
+        >   
+        >   **Checks for library functions.**
         >   
         >   **Generation of the configure script**
         >   
-        >   > AC_OUTPUT
+        >   AC_OUTPUT
 
     - autoheader
         - autoheader根据configure.ac中的AC_CHECK_HEADERS等生成config.h.in模板
