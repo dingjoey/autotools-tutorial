@@ -40,28 +40,28 @@
             - 如果源码有C、C++, 那么需要添加编译工具的检查,比如：C_PROG_CC
             - 如果Makfile.in或Makefile.am中有用到脚本等，会自动添加AC_CHECK_INSTALL等
         - configure.scan的结构
-        >   **init**   
-        >   AC_PREREQ([2.63])
-        >   
-        >   AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
-        >   
-        >   **init file**  
-        >   AC_CONFIG_SRCDIR([test.c])
-        >   
-        >   AC_CONFIG_XXXs
-        > 
-        >   **check request**
-        >   **Checks for programs.**
-        >   
-        >   **Checks for libraries.**
-        >   
-        >   **Checks for typedefs, structures, and compiler characteristics.**
-        >   
-        >   **Checks for library functions.**
-        >   
-        >   **Generation of the configure script**
-        >   
-        >   AC_OUTPUT
+            >   **init**   
+            >   AC_PREREQ([2.63])
+            >   
+            >   AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
+            >   
+            >   **init file**  
+            >   AC_CONFIG_SRCDIR([test.c])
+            >   
+            >   AC_CONFIG_XXXs
+            > 
+            >   **check request**
+            >   **Checks for programs.**
+            >   
+            >   **Checks for libraries.**
+            >   
+            >   **Checks for typedefs, structures, and compiler characteristics.**
+            >   
+            >   **Checks for library functions.**
+            >   
+            >   **Generation of the configure script**
+            >   
+            >   AC_OUTPUT
 
     - autoheader
         - autoheader根据configure.ac中的AC_CHECK_HEADERS等生成config.h.in模板
