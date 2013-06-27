@@ -1,106 +1,219 @@
-## Autotool 概述##
+## 常见的构建任务 outline##
+- 组织工程的方式
+    - 工程源目录结构
+    - exmpale
 
-### autotool 工具概述 ###
+- 构建相关
+    - 利用Libtool构建发布的动态库
+    - 利用Libtool构建内部静态库
+    - 利用Automake原始primary构建program
+    - 利用Automake原始primary构建单元测试TESTS nonist_program
+
+- 依赖配置化
+    - 一般来说项目依赖安装在系统路径中是OK的
+    - 如果以来安装在自定义位置如何进行配置?
+        - ./configure时指定CPPFLAGS, LDFLAGS
+        - 利用M4宏，添加-with-deps的配置选项进行配置
+
+- 依赖下载安装自动化
+    - 提供脚本下载所有需要的依赖
+------
+
+## 常见的构建任务 details##
+- 组织工程的方式
+    - 工程源目录结构
+    ```
+        src/
+           Makfile.am
+           componentA/
+                     src.c
+                     header.h
+                     Makfile.am
+           componentB/
+                     src.c
+                     header.h
+                     Makfile.am
+    ```
+    - exmpale
+    ```
+        src/
+        ├── client
+        │   ├── client.c
+        │   ├── jupiterclient.h
+        │   ├── Makefile.am
+        │   ├── Makefile.in
+        │   └── test_client.c
+        ├── common
+        │   ├── caculate.c
+        │   ├── jupcommon.h
+        │   ├── Makefile.am
+        │   ├── Makefile.in
+        │   └── print.c
+        ├── main
+        │   ├── main.c
+        │   ├── Makefile.am
+        │   └── Makefile.in
+        ├── Makefile.am
+        └── Makefile.in
+    ```
+------
+
+- 构建相关
+    - 利用Libtool构建发布的动态库步骤如下:
+        - 使用Libtool在configure.ac中的配置:AC_PROG_LIBTOOL
     
-- autotools工具主要有如下3个package
-    - Autoconf
-    - Automake
-    - Libtoolize
+        - 编写对应要构建成so的组件目录中Makefile.am
+            1. 指明构建库，并且使用libool来构建（lib_xxx_LTLIBRARIES， lib就已经指明了以后的安装路径$(libdir)==$(prefix)/dir）
+            ```
+                lib_LTLIBRARIES = libjupclient.la
+            
+            ```
+            2. 指明源码和头文件（xxx_la_SOURCES）（注意一定要包括要发布的头文件）
+            ```
+                libjupclient_la_SOURCES = jupiterclient.h client.c
+            
+            ```
+            3. 指明要发布的头文件和安装的路径(xxxincludedir : 指定头文件的安装路径)(xxxinclude_HEADERS: 指明需要发布的头文件)
+            ```
+                libjupclientincludedir = $(includedir)/@PACKAGE_NAME@/client
+                libjupclientinclude_HEADERS = jupiterclient.h
+            ```
+            4. 指明其本身依赖的静态库
+            ```
+                libjupclient_la_LIBADD = $(top_srcdir)/src/common/libjupcommon.la
+            
+            ```
+            5. 指明编译参数
+            ```
+                libjupclient_la_CPPFLAGS =  $(AM_CPPFLAGS) $(NULL)
+            
+                libjupclient_la_CFLAGS =  $(AM_CFLAGS) $(NULL)    
+                libjupclient_la_CXXFLAGS =  $(AM_CXXFLAGS) $(NULL)
+            
+                libjupclient_la_LDFLAGS =  $(AM_LDFLAGS) $(NULL) #依赖的动态库 和搜索路径
+            ```    
+        - example:
+            ```
+                 11 # 构建一个需要发布的so 用作jupiter的client
+                 12 lib_LTLIBRARIES = libjupclient.la
+                 13 
+                 14 # client库源码client.c 
+                 15 libjupclient_la_SOURCES = jupiterclient.h client.c
+                 16 libjupclient_la_CPPFLAGS =  $(AM_CPPFLAGS) $(NULL)
+                 17 libjupclient_la_CFLAGS =  $(AM_CFLAGS) $(NULL)
+                 18 libjupclient_la_CXXFLAGS =  $(AM_CXXFLAGS) $(NULL)
+                 19 libjupclient_la_LDFLAGS =  $(AM_LDFLAGS) $(NULL)
+                 20 # 依赖内部工具库libjupcommon.la
+                 21 libjupclient_la_LIBADD = $(top_srcdir)/src/common/libjupcommon.la
+                 22 # 指定要发布的la的对应发布头文件 
+                 23 libjupclientincludedir = $(includedir)/@PACKAGE_NAME@/client
+                 24 libjupclientinclude_HEADERS = jupiterclient.h
+            ```
+    - 利用Libtool构建内部静态库
+        - 类似于使用Libtool构建需要发布的动态库，但是更加简单:
+            - 不需要指明发布的头文件和安装路径
+            - 库本身不需要install_location（lib_）的前缀，而是使用noninst_的前缀
+        - example:
+            ```
+                 10 #使用libtoolize 构建工程内部工具库 不需要发布安装
+                 11 noinst_LTLIBRARIES = libjupcommon.la
+                 12 libjupcommon_la_SOURCES = jupcommon.h print.c caculate.c
+                 13 libjupcommon_la_CPPFLAGS =  $(AM_CPPFLAGS) $(NULL)
+                 14 libjupcommon_la_CFLAGS =  $(AM_CFLAGS) $(NULL)
+                 15 libjupcommon_la_CXXFLAGS =  $(AM_CXXFLAGS) $(NULL)
+                 16 libjupcommon_la_LDFLAGS =  $(AM_LDFLAGS) $(NULL)
+            ```
+        
+    - 利用Automake原始primary构建program
+        - steps:
+            1. 指明program 使用前缀指明安装位置比如 bin_
+            2. 指明编译参数 program_CPPFLAGS/CFLAGS CXXFLAGS/LIBADD/LDFALGS
     
-  Automake and Libtool are both standard pluggable options that can be added to configure.ac with a few simple macro calls.
-
-
-- Autoconf
-    - Autoconf主要用来生成configure脚本的。
-
-        > 附：configure脚本主要功能是以Makfile.in和config.h.in模板为输入
-        > 
-        >    基于系统特征和用户指定配置生成Makefile和config.h的。
-
-    - autoconf的输入：configure.ac和acinclude.m4/aclocal.m4    
-      autoconf的输出：configure脚本
-
-    - Autoconf的package包含如下工具
-        - autoscan : 扫描工程文件，帮助生成configure.ac
-        - autoheader : 以configure.ac中(AC_CHECK_HEADERS等)为输入，帮助生成config.h.in
-        - ifnames：如果没有autoheader自动生成config.h.in，那么借助此命令可以协助人肉写config.h.in
-        - autoconf：将configure.ac中的宏展开，生成configure脚本。这个过程可能要用到aclocal.m4、acinlude.m4、 m4/*.m4中定义的宏。
-        - autom4te: Autoconf package运行的缓存
-        - autoupdate
-        - autoreconf：
-    
-    - AutoConf package执行时的数据流图     
-     ![image](./assets/autoconf_ahdr_dataflow.png)
-     http://www.freesoftwaremagazine.com/files/nodes/2754/autoconf_ahdr_dataflow.png
-     
-    - autoscan
-        - 扫描整个目录，生成configure.scan文件，由此为基础人肉加工成configure.ac就比较方便了
-        - autoscan生成的configure.scan内容依据一些规则：
-            - 如果源码中有include，那么会添加AC_CONFIG_HEADERS, AC_CHECK_HEADER
-            - 如果源码有C、C++, 那么需要添加编译工具的检查,比如：C_PROG_CC
-            - 如果Makfile.in或Makefile.am中有用到脚本等，会自动添加AC_CHECK_INSTALL等
-        - configure.scan的结构
-            ```   
-               **init**   
-               AC_PREREQ([2.63])
-               
-               AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
-               
-               **init file**  
-               AC_CONFIG_SRCDIR([test.c])
-               
-               AC_CONFIG_XXXs
-             
-               **check request**
-               **Checks for programs.**
-               
-               **Checks for libraries.**
-               
-               **Checks for typedefs, structures, and compiler characteristics.**
-               
-               **Checks for library functions.**
-               
-               **Generation of the configure script**
-               
-               AC_OUTPUT
+        - example:
+            ```
+             11 bin_PROGRAMS = jupiter
+             12 jupiter_SOURCES = main.c
+             13 jupiter_CPPFLAGS = $(AM_CPPFLAGS) $(NULL)
+             14 jupiter_CFLAGS = $(NULL)
+             15 jupiter_CXXLAGS = $(NULL)
+             16 jupiter_LDFLAGS = $(NULL)
+             17 jupiter_LDADD = $(top_srcdir)/src/common/libjupcommon.la \
+             18                 $(NULL)
             ```
 
-    - autoheader
-        - autoheader根据configure.ac中的AC_CHECK_HEADERS等生成config.h.in模板
-        - autohead的输入：configure.ac 输出config.h.in
-        - autoheader要运行的前提是configure.ac中存在，并且指明生成头文件的名字AC_CONFIG_HEADERS
-  
-    - ifnames
-        - 输出文件中的#if #ifndef #endif #define的预编译指令
-        - 一般用于帮助人肉场景下写config.h.in
-    
+    - 利用Automake原始primary构建单元测试TESTS nonist_program
 
-- Automake
-    - Automake package主要用来简化人肉写Makefile.in的工作. 另外的也有automake --add-missing --copy的作用
-    - Automake package包含如下工具
-        - automake
-        - aclocal
-    - automake
-        - automake用来根据Makefile.am生成Makefile.in
-        - **automake还可以用来帮助拷贝创建项目中需要用到的标准文件，比如README, INSTALL等 automake --add-missing --copy**
-        - automake的输入：configure.ac和Makefile.am; 
-        - automake的输出：
-            - Makefile.in；
-            - stamp-h.in config.guess config.sub
-            - COPYING INSTALL install-sh missing mkinstalldirs; 
-    - aclocal
-        - aclocal由此aclocal起到的作用就是 将所有非autoconf定义的M4宏定义收集起来统一拷贝到aclocal.m4中。
-        - aclocal工具的动机
-            - 使用automake需要用到一些额外定义的M4宏; 默认autoconf供用户自定义M4宏的文件时aclocal.m4
-            - aclocal命令用来负责生成aclocal.m4文件而不需要用户自己写
-            - 以configure.ac为输入查看INIT指令，如果使用了automake/libtool，那么就在aclocal.m4中添加automake要用的宏
-            - 创建m4目录其中*.m4文件都会被aclocal拷贝进aclocal.m4;可以用来自定义M4宏
-        - 用到aclocal的场景：
-            - automake定义的M4宏
-            - 自定义acinclude.m4； m4/*.m4
-            - libtoolize定义的M4宏
+------
+
+- 依赖配置化
+    - 一般来说项目依赖安装在系统路径中是OK的
+    - 如果以来安装在自定义位置如何进行配置?
+        - ./configure时指定CPPFLAGS, CFLGAS, LDFLAGS
+        - 利用M4宏，添加-with-deps的配置选项进行配置，本质上还是设置CPPFLAGS CFLAGS LDFLAGS等
+    - steps:
+        - **acinclude.m4中使用AC_DEFUN定义宏AC_CHECK_EXTR_OPTIONS,在configure.ac中调用**
+        - 根据--with-xx传入的值设置XXX_HOME
+        - 设置XXX_PARSER_H根据依赖的头文件来检查依赖是否存在
+        - 如果依赖存在则设置XXX_CFLGAS GTEST_LIBS
+        - 如果依赖不存在则AC_MSG_ERROR
+    - exmpale:
+        ```
+              2 ## debug arg
+              3     AC_MSG_CHECKING(for debugging)
+              4     AC_ARG_ENABLE(debug, [  --enable-debug          compile for debugging, default yes])
+              5     if test -z "$enable_debug" ; then
+              6         CFLAGS="-g -D_DEBUG -Wall"
+              7         CXXFLAGS="-g -D_DEBUG -Wall"
+              8     elif test $enable_debug = "yes" ; then
+              9         CFLAGS="-g -D_DEBUG -Wall"
+             10         CXXFLAGS="-g -D_DEBUG -Wall"
+             11     else
+             12         CFLAGS="-g -O2 -DNDEBUG -Wall"
+             13         CXXFLAGS="-g -O2 -DNDEBUG -Wall"
+             14     fi
+             15     AC_MSG_RESULT([$enable_debug])
+        ```
         
-
-- Libtoolize
+        ```
+             17 ##gtest
+             18     AC_ARG_WITH([gtest],
+             19         [AS_HELP_STRING([--with-gtest],
+             20             [location of the gtest, defaults to /usr])],
+             21         [GTEST_HOME="$withval"],
+             22         [GTEST_HOME='/usr'])
+             23     AC_SUBST([GTEST_HOME])
+             24     GTEST_PARSER_H="$GTEST_HOME/include/gtest/gtest.h"
+             25     if test -f "$GTEST_PARSER_H"; then
+             26         GTEST_CPPFLAGS="-I$GTEST_HOME/include"
+             27         GTEST_LDFLAGS=$(NULL)
+             28         GTEST_LIBS="$GTEST_HOME/lib/libgtest_main.la"
+             29         AC_SUBST(GTEST_CPPFLAGS)
+             30         AC_SUBST(GTEST_LDFLAGS)
+             31         AC_SUBST(GTEST_LIBS)
+             32     else
+             33         AC_MSG_ERROR([cannot find gtest in $GTEST_HOME, check --with-gtest])
+             34     fi
+        ```
+             
+        ```
+             36 ##json 
+             37     AC_ARG_WITH([json],
+             38         [AS_HELP_STRING([--with-json],
+             39             [location of the json, defaults to /usr])],
+             40         [JSON_HOME="$withval"],
+             41         [JSON_HOME='/usr'])
+             42     AC_SUBST([JSON_HOME])
+             43     JSON_PARSER_H="$JSON_HOME/include/json/json.h"
+             44     if test -f "$JSON_PARSER_H"; then
+             45         JSON_CPPFLAGS="-I$JSON_HOME/include/json"
+             46         JSON_LDFLAGS="-L$JSON_HOME/lib64"
+             47         JSON_LIBS="-ljson"
+             48         AC_SUBST(JSON_CPPFLAGS)
+             49         AC_SUBST(JSON_LDFLAGS)
+             50         AC_SUBST(JSON_LIBS)
+             51     else
+             52         AC_MSG_ERROR([cannot find json in $JSON_HOME, check --with-json])
+             53     fi
+        ```
 
 
